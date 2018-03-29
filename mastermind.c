@@ -2,10 +2,10 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <stdint.h>
-#include <stdlib.h> 
-#include <unistd.h> 
-#include <time.h> 
-#include <string.h> 
+#include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
+#include <string.h>
 
 
 #define BLOCK_SIZE (4*1024) //set the block size
@@ -17,18 +17,18 @@
 #define GPFSEL_INPUT 0x00 //contant variable for setting pin mode (input)
 
 static volatile int * gpio; //list of ints for gpio
-static int redPin, greenPin; //declare static variables for the red and green pins
+static int redPin, yellowPin; //declare static variables for the red and green pins
 
 
 
 pinMode(volatile int * gpio, int pin, unsigned char fun){ //this fuction uses assembly to set the function of a BCM pin
 	int GPFSEL = (pin/10)*4;
-	
+
 	int bitshift = (pin%10)*3;
-	
+
 	fun = fun & 0x07;
-	
-	
+
+
 	asm(
 	"	MOV R0, %[GPIO]\n"
 	"	MOV R1, %[bitshift]\n"
@@ -48,7 +48,7 @@ pinMode(volatile int * gpio, int pin, unsigned char fun){ //this fuction uses as
 
 
 digitalWrite(volatile int * gpio, int pin, int state){ //this function uses assembly, it sets a BCM pin to high or low
-	
+
 		asm(
 		"	alovelylabel:\n"
 		"	MOV R0, %[GPIO]\n"
@@ -75,12 +75,12 @@ digitalWrite(volatile int * gpio, int pin, int state){ //this function uses asse
 
 int readPin (volatile int * gpio, int pin) { //this assembly code reads the state of a pin
     int offset = ((pin / 32) + 13) * 4;
-    
+
     int pinSet = pin % 32;
-    
+
     int r;
-    
-    
+
+
     asm(
         "\tLDR R0, %[gpi]\n"
         "\tMOV R1, R0\n"
@@ -103,9 +103,9 @@ int readPin (volatile int * gpio, int pin) { //this assembly code reads the stat
 
 
 volatile int * getGPIO(){ //this fucntion takes care of the memory mapping of  GPIO
-	
+
 	volatile int * gpio;
-	
+
 	int f;
 
 
@@ -114,10 +114,10 @@ volatile int * getGPIO(){ //this fucntion takes care of the memory mapping of  G
 		printf("could not open /dev/main\n");
 		exit(0);
 	}
-	
+
 
 	gpio = mmap(0, BLOCK_SIZE, PROT_READ | PROT_WRITE , MAP_SHARED, f, GPIO_Base);
-	
+
 
 	if ((int) gpio ==-1 ){
 		exit(0);
@@ -129,8 +129,8 @@ volatile int * getGPIO(){ //this fucntion takes care of the memory mapping of  G
 
 
 
-pinFlash(int pin, int flashes){ //this function is used by redFlash and greenFlash. it flashes an inputted number of times
-	
+pinFlash(int pin, int flashes){ //this function is used by redFlash and yellowFlash. it flashes an inputted number of times
+
 	int i =0;
 
 	for (; i<flashes; i++){
@@ -139,7 +139,7 @@ pinFlash(int pin, int flashes){ //this function is used by redFlash and greenFla
 		digitalWrite(gpio, pin, 0);
 		usleep(500000);
 	}
-	
+
 }
 
 
@@ -148,28 +148,28 @@ redFlash(int flashes){ //this function uses pinFlash to flash the red LED
 }
 
 
-greenFlash(int flashes){ //this function uses pinFLash to flash the green LED
-	pinFlash(greenPin, flashes);
+yellowFlash(int flashes){ //this function uses pinFLash to flash the yellow LED
+	pinFlash(yellowPin, flashes);
 }
 
 
-ledInputRecieved(int input){ //flashes the red once then green a specified amount of times
+ledInputRecieved(int input){ //flashes the red once then yellow a specified amount of times
 	redFlash(1);
-	greenFlash(input);
+	yellowFlash(input);
 }
 
 
 ledShowResult(int exact, int approximate){ //shows the results of the guess using LEDs
-	greenFlash(exact);
+	yellowFlash(exact);
 	redFlash(1);
-	greenFlash(approximate);
-	redFlash(3); 
+	yellowFlash(approximate);
+	redFlash(3);
 }
 
 
 ledSuccess(){ //this displays that it's the end of the game
 	digitalWrite(gpio, redPin, 1);
-	greenFlash(3);
+	yellowFlash(3);
 	digitalWrite(gpio, redPin, 0);
 }
 
@@ -177,16 +177,16 @@ ledSuccess(){ //this displays that it's the end of the game
 int getButtonInput() { //recieves the user's input via the button
     int input = 0;
     time_t stime;
-    
+
     time(&stime);
-    
+
     while ((time(NULL) - stime) < TIMEOUT) {
         if(readPin(gpio, BUTTON)){
 			usleep(300000);
             input++;
 		}
 	}
-	
+
     return input;
 }
 
@@ -196,20 +196,20 @@ initialiseMastermindIO(){ //initialises pins etc (IO) for the game
 	int dataPins[4] = {23, 17, 27, 22};
 
 	redPin = 5;
-	greenPin = 6;
+	yellowPin = 6;
 	gpio = getGPIO();
 
 
 	pinMode(gpio, redPin, GPFSEL_OUTPUT);
 	digitalWrite(gpio, redPin, 0);
 
-	pinMode(gpio, greenPin, GPFSEL_OUTPUT);
+	pinMode(gpio, yellowPin, GPFSEL_OUTPUT);
 	digitalWrite(gpio, greenPin, 0);
 }
 
 
 
-struct { //structure that holds 2 ints: the exact guesses and approx guesses 
+struct { //structure that holds 2 ints: the exact guesses and approx guesses
 	int exact;
 	int approximate;
 } typedef Result;
@@ -220,7 +220,7 @@ int debug, codeLength;
 Result checkGuess(int * guess, int * answer){ //this funtion takes in a guess and the answer and desplays a result structure
 	int index =0, approx=0, exact=0, inner;
 	Result res= {0, 0};
-	
+
 	//must make a copy because the guess and answer arrays are changed
 	int * answercpy = malloc(sizeof(*answercpy) * codeLength);
 	memcpy(answercpy, answer, sizeof(*answercpy) * codeLength);
@@ -281,7 +281,7 @@ int * generateAnswer(int colourCount){ //this function is used during debug
 	if (debug) printf("Secret code: ");
 
 	for (i=0; i<codeLength; i++){
-		answer[i] = (rand() % colourCount) +1; 
+		answer[i] = (rand() % colourCount) +1;
 		if (debug) printf("%d  ", answer[i]);
 	}
 
@@ -298,12 +298,12 @@ void main(int argc, char ** argv){ //main method
 	Result res;
 	int opt, cCount, attempts;
 
-	debug = 0; 
+	debug = 0;
 	codeLength = 3;
 	cCount=3;
 	attempts=0;
-	srand(time(NULL)); 
-	
+	srand(time(NULL));
+
 
 	answer=malloc(sizeof(*answer) * codeLength);
 
@@ -316,10 +316,10 @@ void main(int argc, char ** argv){ //main method
 			debug = 1;
 			break;
 		case 'c':
-			cCount = (*optarg -48); 
+			cCount = (*optarg -48);
 			break;
 		case 'n':
-			codeLength = (*optarg - 48); 
+			codeLength = (*optarg - 48);
 			break;
 		case'?':
 			switch (optopt){
@@ -356,5 +356,3 @@ void main(int argc, char ** argv){ //main method
 
 	ledSuccess();
 }
-
-
